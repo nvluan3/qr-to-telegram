@@ -1,130 +1,47 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Quét mã QR/Barcode & Gửi Telegram</title>
-  <meta name="theme-color" content="#ffffff" />
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="icon.png" type="image/png">
-  <script>
-    // KHÔNG đăng ký service worker để tránh cache
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for(let registration of registrations) {
-          registration.unregister();
-        }
-        console.log("🧹 Đã hủy tất cả service worker để tránh cache.");
-      });
-    }
-  </script>
-  <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 20px;
-      background: #f7f7f7;
-    }
-    video {
-      width: 300px;
-      margin: 20px auto;
-      border: 2px solid #ccc;
-      border-radius: 10px;
-      background: white;
-    }
-    #result {
-      font-size: 1.2rem;
-      margin-top: 20px;
-      color: green;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 1rem;
-      margin-top: 10px;
-      cursor: pointer;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <title>Quét QR và Barcode</title>
 </head>
 <body>
-  <h1>📦 Quét mã QR/Barcode & Gửi tới Telegram</h1>
-  <p>Hướng camera vào mã QR hoặc mã vạch sản phẩm</p>
-  <video id="reader" playsinline autoplay muted></video>
-  <p id="result">Đang khởi động camera...</p>
-  <button onclick="stopScanner()">Dừng quét</button>
+  <h2>Quét QR hoặc Barcode bằng Camera</h2>
+  <video id="video" width="400" height="300" style="border: 1px solid gray"></video>
+  <p><strong>Kết quả:</strong> <span id="result">Chưa có</span></p>
 
   <script type="module">
     import {
-      BrowserMultiFormatReader,
-      BarcodeFormat,
-      DecodeHintType
-    } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
+      BrowserMultiFormatReader
+    } from 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm';
 
-    const telegramToken = '7699635447:AAFnydZdwfRKWRTS1l-VHQtl2dDnAfngLRE';
-    const chatId = '5736517117';
-
-    function sendToTelegram(message) {
-      const url = `https://api.telegram.org/bot${telegramToken}/sendMessage?nocache=${Date.now()}`;
-      const payload = {
-        chat_id: chatId,
-        text: `/sp_${message}`
-      };
-      fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-        body: JSON.stringify(payload)
-      }).then(res => {
-        if (res.ok) {
-          console.log("✅ Đã gửi tới Telegram.");
-        }
-      }).catch(err => console.error("❌ Gửi lỗi:", err));
-    }
-
-    const hints = new Map();
-    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-      BarcodeFormat.CODE_128,
-      BarcodeFormat.EAN_13,
-      BarcodeFormat.EAN_8,
-      BarcodeFormat.UPC_A,
-      BarcodeFormat.UPC_E,
-      BarcodeFormat.CODE_39,
-      BarcodeFormat.QR_CODE
-    ]);
-
-    const codeReader = new BrowserMultiFormatReader(hints);
-    let controls;
+    const codeReader = new BrowserMultiFormatReader();
+    const videoElement = document.getElementById('video');
+    const resultElement = document.getElementById('result');
 
     async function startScanner() {
       try {
         const devices = await BrowserMultiFormatReader.listVideoInputDevices();
-        const selectedDeviceId = devices[0]?.deviceId;
-        if (!selectedDeviceId) {
-          document.getElementById("result").innerText = "❌ Không tìm thấy thiết bị camera.";
+
+        if (devices.length === 0) {
+          resultElement.textContent = 'Không tìm thấy camera.';
           return;
         }
 
-        controls = await codeReader.decodeFromVideoDevice(selectedDeviceId, document.getElementById("reader"), (result, err, ctrl) => {
+        const selectedDeviceId = devices[0].deviceId;
+
+        await codeReader.decodeFromVideoDevice(selectedDeviceId, videoElement, (result, err) => {
           if (result) {
-            const content = result.getText();
-            document.getElementById("result").innerText = "✅ Đã quét: " + content;
-            sendToTelegram(content);
-            ctrl.stop();
+            resultElement.textContent = result.getText();
+          } else if (err && !(err instanceof ZXing.NotFoundException)) {
+            console.error('Lỗi:', err);
           }
         });
-      } catch (error) {
-        document.getElementById("result").innerText = "❌ Lỗi mở camera: " + error;
-        console.error("Camera error:", error);
+
+      } catch (err) {
+        console.error('Không thể khởi động camera:', err);
+        resultElement.textContent = 'Lỗi khi mở camera.';
       }
     }
-
-    window.stopScanner = function () {
-      if (controls) {
-        controls.stop();
-        document.getElementById("result").innerText = "⛔ Đã dừng quét.";
-      }
-    };
 
     startScanner();
   </script>
