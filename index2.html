@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Quét QR & Gửi Telegram</title>
+  <title>Quét QR hoặc Barcode</title>
   <meta name="theme-color" content="#ffffff" />
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.png" type="image/png">
@@ -30,8 +30,11 @@
     button {
       padding: 10px 20px;
       font-size: 1rem;
-      margin: 10px 5px 0;
+      margin: 10px 5px;
       cursor: pointer;
+    }
+    .mode-buttons {
+      margin-bottom: 10px;
     }
   </style>
   <script>
@@ -48,13 +51,18 @@
 </head>
 <body>
 
-  <h1>📷 Quét mã QR & Gửi tới Telegram Bot</h1>
-  <p>Hướng camera vào mã QR chứa số seri sản phẩm</p>
+  <h1>📷 Quét QR hoặc Barcode & Gửi Telegram</h1>
+
+  <div class="mode-buttons">
+    <button onclick="setMode('qr')">🔳 Quét QR Code</button>
+    <button onclick="setMode('barcode')">📦 Quét Barcode</button>
+  </div>
+
   <div id="reader"></div>
   <p id="result"></p>
 
-  <button onclick="stopScanner()">Dừng quét</button>
-  <button onclick="startScanner()">Quét lại</button>
+  <button onclick="stopScanner()">⏹ Dừng quét</button>
+  <button onclick="startScanner()">🔄 Quét lại</button>
   <button onclick="copyText()">📋 Copy</button>
 
   <script>
@@ -63,6 +71,7 @@
 
     const html5QrCode = new Html5Qrcode("reader");
     let isScanning = false;
+    let currentMode = 'qr'; // default
 
     function sendToTelegram(message) {
       const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
@@ -75,30 +84,41 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).then(res => {
-        if (res.ok) {
-          console.log("Đã gửi đến Telegram.");
-        }
+        if (res.ok) console.log("Đã gửi đến Telegram.");
       }).catch(err => console.error("Lỗi khi gửi:", err));
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      startScanner();
     }
 
     function startScanner() {
       if (isScanning) return;
       isScanning = true;
+
+      let format;
+      if (currentMode === 'qr') {
+        format = [Html5QrcodeSupportedFormats.QR_CODE];
+      } else if (currentMode === 'barcode') {
+        format = [Html5QrcodeSupportedFormats.CODE_128];
+      }
+
       html5QrCode.start(
         { facingMode: "environment" },
-        { fps: 10, 
+        {
+          fps: 10,
           qrbox: 300,
-          formatsToSupport: [
-              Html5QrcodeSupportedFormats.QR_CODE,
-              Html5QrcodeSupportedFormats.CODE_128
-            ]
+          formatsToSupport: format
         },
         qrMessage => {
-          document.getElementById("result").innerText = `✅ Đã quét: ${qrMessage}`;
+          document.getElementById("result").innerText = `✅ Đã quét (${currentMode.toUpperCase()}): ${qrMessage}`;
           sendToTelegram(qrMessage);
           stopScanner();
         },
-        errorMessage => {}
+        errorMessage => {
+          // lỗi không quan trọng trong quá trình quét
+        }
       ).catch(err => {
         console.error("Không thể khởi động camera:", err);
         isScanning = false;
@@ -109,7 +129,7 @@
       if (!isScanning) return;
       html5QrCode.stop().then(() => {
         isScanning = false;
-        document.getElementById("result").innerText += "\nĐã dừng quét.";
+        document.getElementById("result").innerText += "\n⏹ Đã dừng quét.";
       }).catch(err => {
         console.error("Lỗi khi dừng camera:", err);
       });
@@ -123,9 +143,6 @@
           .catch(err => alert("❌ Lỗi khi sao chép!"));
       }
     }
-
-    // Tự động bắt đầu quét lần đầu khi trang tải
-    window.onload = startScanner;
   </script>
 
 </body>
