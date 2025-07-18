@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Quét mã & Gửi Telegram</title>
   <meta name="theme-color" content="#ffffff" />
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="icon.png" type="image/png">
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.png" type="image/png" />
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body {
@@ -67,7 +67,7 @@
     const telegramToken = '7699635447:AAFnydZdwfRKWRTS1l-VHQtl2dDnAfngLRE';
     const chatId = '5736517117';
 
-    const html5QrCode = new Html5Qrcode("reader");
+    let html5QrCode = null;
     let isScanning = false;
 
     function sendToTelegram(message) {
@@ -81,8 +81,8 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).then(res => {
-        if (res.ok) console.log("Đã gửi đến Telegram.");
-      }).catch(err => console.error("Lỗi khi gửi:", err));
+        if (res.ok) console.log("✅ Đã gửi đến Telegram.");
+      }).catch(err => console.error("❌ Lỗi khi gửi:", err));
     }
 
     function updateOverlay(type) {
@@ -99,6 +99,8 @@
     function startScanner(formatList, type = "qr") {
       if (isScanning) return;
       isScanning = true;
+
+      html5QrCode = new Html5Qrcode("reader");
 
       const qrbox = (type === "qr")
         ? { width: 250, height: 250 }
@@ -119,9 +121,10 @@
           await sendToTelegram(qrMessage);
           await stopScanner();
         },
-        errorMessage => { /* log lỗi nhẹ nếu muốn */ }
+        errorMessage => { /* có thể xử lý nếu muốn */ }
       ).catch(err => {
-        console.error("Không thể khởi động camera:", err);
+        console.error("❌ Không thể khởi động camera:", err);
+        html5QrCode = null;
         isScanning = false;
       });
     }
@@ -139,16 +142,18 @@
     }
 
     async function stopScanner() {
-      if (!isScanning) return;
+      if (!isScanning || !html5QrCode) return;
       try {
         await html5QrCode.stop();
-        await html5QrCode.clear(); // ✅ Khắc phục không quét lại được
+        await html5QrCode.clear();
+        html5QrCode = null;
         isScanning = false;
         document.getElementById("result").innerText += "\n⛔ Đã dừng quét.";
         document.getElementById("overlay-guide").style.width = "0";
         document.getElementById("overlay-guide").style.height = "0";
       } catch (err) {
-        console.error("Lỗi khi dừng hoặc clear scanner:", err);
+        console.error("❌ Lỗi khi dừng hoặc clear:", err);
+        html5QrCode = null;
         isScanning = false;
       }
     }
