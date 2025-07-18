@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quét Barcode & Gửi Telegram</title>
+  <script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+      background: #f7f7f7;
+    }
+    #scanner {
+      width: 100%;
+      max-width: 400px;
+      height: 300px;
+      margin: 20px auto;
+      position: relative;
+      border: 2px solid #ccc;
+      border-radius: 10px;
+      background: #000;
+    }
+    #result {
+      font-size: 1.2rem;
+      margin-top: 20px;
+      color: green;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      margin: 10px 5px 0;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📦 Quét Barcode & Gửi Telegram</h1>
+  <p>Hướng camera vào mã vạch in trên thiết bị</p>
+
+  <div id="scanner"></div>
+  <p id="result"></p>
+
+  <button onclick="startBarcodeScanner()">🔍 Bắt đầu quét Barcode</button>
+  <button onclick="stopScanner()">⛔ Dừng quét</button>
+  <button onclick="copyText()">📋 Copy</button>
+
+  <script>
+    const telegramToken = '7699635447:AAFnydZdwfRKWRTS1l-VHQtl2dDnAfngLRE';
+    const chatId = '5736517117';
+    let isScanning = false;
+
+    function sendToTelegram(message) {
+      const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
+      const payload = {
+        chat_id: chatId,
+        text: `/sp_${message}`
+      };
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(res => {
+        if (res.ok) console.log("✅ Đã gửi Telegram:", message);
+      }).catch(err => console.error("❌ Lỗi gửi:", err));
+    }
+
+    function startBarcodeScanner() {
+      if (isScanning) return;
+      isScanning = true;
+
+      Quagga.init({
+        inputStream: {
+          name: "Live",
+          type: "LiveStream",
+          target: document.querySelector('#scanner'),
+          constraints: {
+            facingMode: "environment"
+          }
+        },
+        decoder: {
+          readers: ["code_128_reader", "ean_reader", "code_39_reader"]
+        },
+        locate: true,
+        locator: {
+          patchSize: "medium",
+          halfSample: true
+        }
+      }, function (err) {
+        if (err) {
+          console.error("❌ Lỗi khởi động:", err);
+          isScanning = false;
+          return;
+        }
+        Quagga.start();
+      });
+
+      Quagga.onDetected(async function (data) {
+        const code = data.codeResult.code;
+        document.getElementById("result").innerText = `✅ Đã quét: ${code}`;
+        sendToTelegram(code);
+        stopScanner();
+      });
+    }
+
+    function stopScanner() {
+      if (!isScanning) return;
+      Quagga.stop();
+      Quagga.offDetected();
+      isScanning = false;
+      document.getElementById("result").innerText += "\n⛔ Đã dừng quét.";
+    }
+
+    function copyText() {
+      const text = document.getElementById("result").innerText;
+      if (text) {
+        navigator.clipboard.writeText(text)
+          .then(() => alert("📋 Đã sao chép!"))
+          .catch(() => alert("❌ Lỗi khi sao chép!"));
+      }
+    }
+  </script>
+
+</body>
+</html>
