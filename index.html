@@ -91,8 +91,8 @@
         overlay.style.width = "250px";
         overlay.style.height = "250px";
       } else {
-        overlay.style.width = "350px";
-        overlay.style.height = "100px";
+        overlay.style.width = "400px";
+        overlay.style.height = "120px";
       }
     }
 
@@ -119,7 +119,7 @@
           await sendToTelegram(qrMessage);
           await stopScanner();
         },
-        errorMessage => { /* có thể log nhẹ nếu cần */ }
+        errorMessage => { /* log lỗi nhẹ nếu muốn */ }
       ).catch(err => {
         console.error("Không thể khởi động camera:", err);
         isScanning = false;
@@ -142,12 +142,14 @@
       if (!isScanning) return;
       try {
         await html5QrCode.stop();
+        await html5QrCode.clear(); // ✅ Khắc phục không quét lại được
         isScanning = false;
         document.getElementById("result").innerText += "\n⛔ Đã dừng quét.";
         document.getElementById("overlay-guide").style.width = "0";
         document.getElementById("overlay-guide").style.height = "0";
       } catch (err) {
-        console.error("Lỗi khi dừng camera:", err);
+        console.error("Lỗi khi dừng hoặc clear scanner:", err);
+        isScanning = false;
       }
     }
 
