@@ -39,7 +39,7 @@
 <body>
 
   <h1>📦 Quét Barcode & Gửi Telegram</h1>
-  <p>Hướng camera vào mã vạch in trên thiết bị</p>
+  <p>Hướng camera vào mã vạch in trên thiết bị 2</p>
 
   <div id="scanner"></div>
   <p id="result"></p>
@@ -53,6 +53,10 @@
     const chatId = '5736517117';
     let isScanning = false;
 
+    // Xác nhận lặp
+    let lastCode = '';
+    let repeatCount = 0;
+
     function sendToTelegram(message) {
       const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
       const payload = {
@@ -64,13 +68,15 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).then(res => {
-        if (res.ok) console.log("✅ Đã gửi Telegram:", message);
+        if (res.ok) console.log("✅ Gửi Telegram:", message);
       }).catch(err => console.error("❌ Lỗi gửi:", err));
     }
 
     function startBarcodeScanner() {
       if (isScanning) return;
       isScanning = true;
+      lastCode = '';
+      repeatCount = 0;
 
       Quagga.init({
         inputStream: {
@@ -82,7 +88,7 @@
           }
         },
         decoder: {
-          readers: ["code_128_reader"] // Giữ đúng định dạng cần đọc
+          readers: ["code_128_reader"]
         },
         locate: true,
         locator: {
@@ -107,17 +113,32 @@
       });
 
       Quagga.onDetected(async function (data) {
-        console.log("🟡 Dữ liệu đầy đủ:", JSON.stringify(data, null, 2));
+        const rawCode = data.codeResult.code || '';
+        const format = data.codeResult.format || 'unknown';
 
-        if (!data || !data.codeResult || !data.codeResult.code) return;
+        // Lọc chỉ nhận ký tự A–Z, 0–9 (viết hoa)
+        const code = rawCode.trim().toUpperCase();
+        const isValid = /^[A-Z0-9]+$/.test(code);
 
-        const code = data.codeResult.code;
-        const format = data.codeResult.format || "Không rõ";
-        console.log("🟢 Đã nhận:", code, "| Định dạng:", format);
+        console.log("📥 Đã quét:", code, "| Hợp lệ:", isValid, "| Định dạng:", format);
 
-        document.getElementById("result").innerText = `✅ Đã quét: ${code}\n📘 Định dạng: ${format}`;
-        sendToTelegram(code);
-        stopScanner();
+        if (!isValid) {
+          console.warn("⛔ Mã không hợp lệ:", code);
+          return;
+        }
+
+        // Xác nhận trùng 2 lần
+        if (code === lastCode) {
+          repeatCount++;
+          if (repeatCount >= 2) {
+            document.getElementById("result").innerText = `✅ Đã quét: ${code}\n📘 Định dạng: ${format}`;
+            sendToTelegram(code);
+            stopScanner();
+          }
+        } else {
+          lastCode = code;
+          repeatCount = 1;
+        }
       });
     }
 
