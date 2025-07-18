@@ -86,7 +86,13 @@
       isScanning = true;
       html5QrCode.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
+        { fps: 10, 
+          qrbox: 250,
+          formatsToSupport: [
+              Html5QrcodeSupportedFormats.QR_CODE,
+              Html5QrcodeSupportedFormats.CODE_128
+            ]
+        },
         qrMessage => {
           document.getElementById("result").innerText = `✅ Đã quét: ${qrMessage}`;
           sendToTelegram(qrMessage);
