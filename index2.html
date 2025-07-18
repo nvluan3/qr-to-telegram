@@ -9,68 +9,66 @@
     const codeReader = new BrowserMultiFormatReader();
     const videoElement = document.getElementById('video');
     const resultEl = document.getElementById('result');
+    let controls = null;
 
-    let selectedDeviceId;
+    async function requestCameraAndScan() {
+      try {
+        // Yêu cầu quyền camera
+        await navigator.mediaDevices.getUserMedia({ video: true });
 
-    // Lấy camera và khởi động
-    codeReader.listVideoInputDevices().then(videoInputDevices => {
-      if (videoInputDevices.length > 0) {
-        selectedDeviceId = videoInputDevices[0].deviceId;
+        // Lấy camera
+        const devices = await codeReader.listVideoInputDevices();
+        const deviceId = devices[0]?.deviceId;
+        if (!deviceId) {
+          alert("Không tìm thấy camera.");
+          return;
+        }
 
-        codeReader.decodeFromVideoDevice(selectedDeviceId, videoElement, (result, err, controls) => {
+        // Bắt đầu quét
+        controls = await codeReader.decodeFromVideoDevice(deviceId, videoElement, (result, err) => {
           if (result) {
             resultEl.innerText = `✅ Đã quét: ${result.getText()}`;
             sendToTelegram(result.getText());
-            controls.stop(); // Dừng sau lần quét đầu tiên
+            controls.stop();
           }
         });
-      }
-    }).catch(err => {
-      console.error(err);
-    });
 
-    // Gửi Telegram
+      } catch (err) {
+        alert("❌ Không thể truy cập camera: " + err.message);
+        console.error(err);
+      }
+    }
+
     function sendToTelegram(message) {
       const telegramToken = '7699635447:AAFnydZdwfRKWRTS1l-VHQtl2dDnAfngLRE';
       const chatId = '5736517117';
-      const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
-      const payload = {
-        chat_id: chatId,
-        text: `/sp_${message}`
-      };
-      fetch(url, {
+      fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ chat_id: chatId, text: `/sp_${message}` })
       }).then(res => {
         if (res.ok) console.log("Đã gửi Telegram");
       });
     }
 
-    // Copy
-    window.copyResult = () => {
-      navigator.clipboard.writeText(resultEl.innerText).then(() => {
-        alert("📋 Đã sao chép!");
-      });
-    };
-
-    // Quét lại
     window.rescan = () => {
       resultEl.innerText = "";
-      codeReader.reset();
-      codeReader.decodeFromVideoDevice(selectedDeviceId, videoElement, (result, err, controls) => {
-        if (result) {
-          resultEl.innerText = `✅ Đã quét: ${result.getText()}`;
-          sendToTelegram(result.getText());
-          controls.stop();
-        }
-      });
+      if (controls) controls.stop();
+      requestCameraAndScan();
     };
+
+    window.copyResult = () => {
+      const text = resultEl.innerText;
+      if (text) navigator.clipboard.writeText(text).then(() => alert("📋 Đã sao chép"));
+    };
+
+    // Tự động khởi động khi trang tải
+    window.onload = requestCameraAndScan;
   </script>
 </head>
 <body>
-  <h1>📷 Quét mã QR & Barcode</h1>
-  <video id="video" width="300" height="200" style="border:1px solid #ccc;"></video>
+  <h1>📷 Quét QR & Barcode (Code 128)</h1>
+  <video id="video" width="300" height="200" autoplay playsinline style="border:1px solid #ccc;"></video>
   <p id="result"></p>
   <button onclick="rescan()">🔄 Quét lại</button>
   <button onclick="copyResult()">📋 Copy</button>
