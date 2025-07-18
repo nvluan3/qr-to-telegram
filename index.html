@@ -68,7 +68,7 @@
       const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
       const payload = {
         chat_id: chatId,
-        text: `/sp ${message}`
+        text: `/sp_${message}`
       };
       fetch(url, {
         method: 'POST',
