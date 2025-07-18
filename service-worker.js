@@ -1,24 +1,23 @@
-const CACHE_NAME = 'qr-telegram-cache-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon.png',
-  'https://unpkg.com/html5-qrcode'
-];
-
+// ⚠️ BỎ CACHE HOÀN TOÀN
 self.addEventListener('install', function(event) {
+  // Không cache gì cả
+  self.skipWaiting(); // kích hoạt ngay lập tức
+});
+
+self.addEventListener('activate', function(event) {
+  // Xóa mọi cache cũ (nếu có)
   event.waitUntil(
-    caches.open(CACHE_NAME).then(function(cache) {
-      return cache.addAll(urlsToCache);
-    })
+    caches.keys().then(function(keys) {
+      return Promise.all(
+        keys.map(function(key) {
+          return caches.delete(key);
+        })
+      );
+    }).then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', function(event) {
-  event.respondWith(
-    caches.match(event.request).then(function(response) {
-      return response || fetch(event.request);
-    })
-  );
+  // Luôn fetch từ mạng, không dùng cache
+  event.respondWith(fetch(event.request));
 });
