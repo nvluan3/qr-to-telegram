@@ -26,6 +26,7 @@
       font-size: 1.2rem;
       margin-top: 20px;
       color: green;
+      white-space: pre-line;
     }
     button {
       padding: 10px 20px;
@@ -38,7 +39,7 @@
 <body>
 
   <h1>📦 Quét Barcode & Gửi Telegram</h1>
-  <p>Hướng camera vào mã vạch in trên thiết bị 2</p>
+  <p>Hướng camera vào mã vạch in trên thiết bị</p>
 
   <div id="scanner"></div>
   <p id="result"></p>
@@ -81,14 +82,14 @@
           }
         },
         decoder: {
-          readers: ["code_128_reader", "code_39_reader", "ean_reader"]
+          readers: ["code_128_reader"] // Giữ đúng định dạng cần đọc
         },
         locate: true,
         locator: {
-          patchSize: "x-large",     // Tăng độ chính xác
-          halfSample: false         // Dùng full resolution
+          patchSize: "x-large",
+          halfSample: false
         },
-        numOfWorkers: 0,            // Hỗ trợ máy yếu, tránh lỗi thread
+        numOfWorkers: 0,
         frequency: 10,
         debug: {
           drawBoundingBox: true,
@@ -106,9 +107,15 @@
       });
 
       Quagga.onDetected(async function (data) {
-        console.log("🔍 Raw Quagga result:", data);
+        console.log("🟡 Dữ liệu đầy đủ:", JSON.stringify(data, null, 2));
+
+        if (!data || !data.codeResult || !data.codeResult.code) return;
+
         const code = data.codeResult.code;
-        document.getElementById("result").innerText = `✅ Đã quét: ${code}`;
+        const format = data.codeResult.format || "Không rõ";
+        console.log("🟢 Đã nhận:", code, "| Định dạng:", format);
+
+        document.getElementById("result").innerText = `✅ Đã quét: ${code}\n📘 Định dạng: ${format}`;
         sendToTelegram(code);
         stopScanner();
       });
