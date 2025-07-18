@@ -38,7 +38,7 @@
 <body>
 
   <h1>📦 Quét Barcode & Gửi Telegram</h1>
-  <p>Hướng camera vào mã vạch in trên thiết bị</p>
+  <p>Hướng camera vào mã vạch in trên thiết bị 2</p>
 
   <div id="scanner"></div>
   <p id="result"></p>
@@ -81,12 +81,20 @@
           }
         },
         decoder: {
-          readers: ["code_128_reader", "ean_reader", "code_39_reader"]
+          readers: ["code_128_reader", "code_39_reader", "ean_reader"]
         },
         locate: true,
         locator: {
-          patchSize: "medium",
-          halfSample: true
+          patchSize: "x-large",     // Tăng độ chính xác
+          halfSample: false         // Dùng full resolution
+        },
+        numOfWorkers: 0,            // Hỗ trợ máy yếu, tránh lỗi thread
+        frequency: 10,
+        debug: {
+          drawBoundingBox: true,
+          showFrequency: true,
+          drawScanline: true,
+          showPattern: true
         }
       }, function (err) {
         if (err) {
@@ -98,6 +106,7 @@
       });
 
       Quagga.onDetected(async function (data) {
+        console.log("🔍 Raw Quagga result:", data);
         const code = data.codeResult.code;
         document.getElementById("result").innerText = `✅ Đã quét: ${code}`;
         sendToTelegram(code);
