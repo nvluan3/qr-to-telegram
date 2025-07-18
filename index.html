@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Quét QR & Gửi Telegram</title>
+  <title>Quét mã & Gửi Telegram</title>
   <meta name="theme-color" content="#ffffff" />
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.png" type="image/png">
@@ -14,13 +14,16 @@
       text-align: center;
       padding: 20px;
       background: #f7f7f7;
+      position: relative;
     }
     #reader {
-      width: 300px;
+      width: 100%;
+      max-width: 400px;
       margin: 20px auto;
       border: 2px solid #ccc;
       border-radius: 10px;
       background: white;
+      position: relative;
     }
     #result {
       font-size: 1.2rem;
@@ -33,20 +36,26 @@
       margin: 10px 5px 0;
       cursor: pointer;
     }
-  </style>
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js')
-        .then(reg => console.log("✅ Service Worker đã đăng ký:", reg))
-        .catch(err => console.error("❌ Service Worker lỗi:", err));
+    #overlay-guide {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      border: 2px dashed red;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 10;
     }
-  </script>
+  </style>
 </head>
 <body>
 
-  <h1>📷 Quét mã & Gửi tới Telegram Bot</h1>
+  <h1>📷 Quét mã & Gửi tới Telegram</h1>
   <p>Chọn loại mã bạn muốn quét:</p>
-  <div id="reader"></div>
+
+  <div id="reader">
+    <div id="overlay-guide"></div>
+  </div>
+
   <p id="result"></p>
 
   <button onclick="startQRScanner()">🔍 Quét QR Code</button>
@@ -76,14 +85,33 @@
       }).catch(err => console.error("Lỗi khi gửi:", err));
     }
 
-    function startScanner(formatList) {
+    function updateOverlay(type) {
+      const overlay = document.getElementById("overlay-guide");
+      if (type === "qr") {
+        overlay.style.width = "250px";
+        overlay.style.height = "250px";
+      } else {
+        overlay.style.width = "350px";
+        overlay.style.height = "100px";
+      }
+    }
+
+    function startScanner(formatList, type = "qr") {
       if (isScanning) return;
       isScanning = true;
+
+      const qrbox = (type === "qr")
+        ? { width: 250, height: 250 }
+        : { width: 350, height: 100 };
+
+      updateOverlay(type);
+
       html5QrCode.start(
         { facingMode: "environment" },
         {
-          fps: 5,
-          qrbox: 300,
+          fps: 10,
+          qrbox: qrbox,
+          aspectRatio: 1.7778,
           formatsToSupport: formatList
         },
         qrMessage => {
@@ -99,11 +127,11 @@
     }
 
     function startQRScanner() {
-      startScanner([Html5QrcodeSupportedFormats.QR_CODE]);
+      startScanner([Html5QrcodeSupportedFormats.QR_CODE], "qr");
     }
 
     function startBarcodeScanner() {
-      startScanner([Html5QrcodeSupportedFormats.CODE_128]);
+      startScanner([Html5QrcodeSupportedFormats.CODE_128], "barcode");
     }
 
     function stopScanner() {
@@ -111,6 +139,8 @@
       html5QrCode.stop().then(() => {
         isScanning = false;
         document.getElementById("result").innerText += "\n⛔ Đã dừng quét.";
+        document.getElementById("overlay-guide").style.width = "0";
+        document.getElementById("overlay-guide").style.height = "0";
       }).catch(err => {
         console.error("Lỗi khi dừng camera:", err);
       });
