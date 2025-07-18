@@ -87,6 +87,7 @@
 
     function updateOverlay(type) {
       const overlay = document.getElementById("overlay-guide");
+      if (!overlay) return;
       if (type === "qr") {
         overlay.style.width = "250px";
         overlay.style.height = "250px";
@@ -121,7 +122,7 @@
           await sendToTelegram(qrMessage);
           await stopScanner();
         },
-        errorMessage => { /* có thể xử lý nếu muốn */ }
+        errorMessage => { /* có thể log nhẹ nếu muốn */ }
       ).catch(err => {
         console.error("❌ Không thể khởi động camera:", err);
         html5QrCode = null;
@@ -146,11 +147,14 @@
       try {
         await html5QrCode.stop();
         await html5QrCode.clear();
+
+        // 🔧 Phục hồi overlay sau khi clear DOM của #reader
+        document.getElementById("reader").innerHTML = `<div id="overlay-guide"></div>`;
+
         html5QrCode = null;
         isScanning = false;
+
         document.getElementById("result").innerText += "\n⛔ Đã dừng quét.";
-        document.getElementById("overlay-guide").style.width = "0";
-        document.getElementById("overlay-guide").style.height = "0";
       } catch (err) {
         console.error("❌ Lỗi khi dừng hoặc clear:", err);
         html5QrCode = null;
