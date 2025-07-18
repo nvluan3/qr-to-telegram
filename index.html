@@ -7,8 +7,6 @@
   <meta name="theme-color" content="#ffffff" />
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.png" type="image/png">
-
-  <!-- Đăng ký Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js')
@@ -20,7 +18,6 @@
         });
     }
   </script>
-
   <style>
     body {
       font-family: sans-serif;
@@ -28,7 +25,6 @@
       padding: 20px;
       background: #f7f7f7;
     }
-
     video {
       width: 300px;
       margin: 20px auto;
@@ -36,13 +32,11 @@
       border-radius: 10px;
       background: white;
     }
-
     #result {
       font-size: 1.2rem;
       margin-top: 20px;
       color: green;
     }
-
     button {
       padding: 10px 20px;
       font-size: 1rem;
@@ -51,18 +45,12 @@
     }
   </style>
 </head>
-
 <body>
-
   <h1>📦 Quét mã QR/Barcode & Gửi tới Telegram</h1>
   <p>Hướng camera vào mã QR hoặc mã vạch sản phẩm</p>
-
   <video id="reader" playsinline></video>
   <p id="result">Đang quét...</p>
-
   <button onclick="stopScanner()">Dừng quét</button>
-
-  <!-- Thư viện ZXing hỗ trợ nhiều định dạng mã -->
   <script type="module">
     import {
       BrowserMultiFormatReader,
@@ -70,9 +58,8 @@
       DecodeHintType
     } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
 
-    // ✅ Thay thông tin bot thật
-    const telegramToken = '7699635447:AAFnydZdwfRKWRTS1l-VHQtl2dDnAfngLRE';
-    const chatId = '5736517117';
+    const telegramToken = 'YOUR_BOT_TOKEN';
+    const chatId = 'YOUR_CHAT_ID';
 
     function sendToTelegram(message) {
       const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
@@ -91,7 +78,6 @@
       }).catch(err => console.error("❌ Gửi lỗi:", err));
     }
 
-    // ⚙️ Cấu hình định dạng ưu tiên barcode + QR
     const hints = new Map();
     hints.set(DecodeHintType.POSSIBLE_FORMATS, [
       BarcodeFormat.CODE_128,
@@ -112,7 +98,7 @@
         document.getElementById("result").innerText = "✅ Đã quét: " + content;
         sendToTelegram(content);
         controls = ctrl;
-        ctrl.stop(); // Dừng sau lần quét đầu tiên
+        ctrl.stop();
       }
     }).catch(err => {
       document.getElementById("result").innerText = "❌ Không thể mở camera: " + err;
