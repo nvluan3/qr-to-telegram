@@ -3,149 +3,52 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Quét Barcode & Gửi Telegram</title>
-  <script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 20px;
-      background: #f7f7f7;
-    }
-    #scanner {
-      width: 100%;
-      max-width: 400px;
-      height: 300px;
-      margin: 20px auto;
-      position: relative;
-      border: 2px solid #ccc;
-      border-radius: 10px;
-      background: #000;
-    }
-    #result {
-      font-size: 1.2rem;
-      margin-top: 20px;
-      color: green;
-      white-space: pre-line;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 1rem;
-      margin: 10px 5px 0;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
+  <title>ZXing Barcode Scanner</title>
+  <script type="module">
+    import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.0.10/+esm';
 
-  <h1>📦 Quét Barcode & Gửi Telegram</h1>
-  <p>Hướng camera vào mã vạch in trên thiết bị 2</p>
-
-  <div id="scanner"></div>
-  <p id="result"></p>
-
-  <button onclick="startBarcodeScanner()">🔍 Bắt đầu quét Barcode</button>
-  <button onclick="stopScanner()">⛔ Dừng quét</button>
-  <button onclick="copyText()">📋 Copy</button>
-
-  <script>
-    const telegramToken = '7699635447:AAFnydZdwfRKWRTS1l-VHQtl2dDnAfngLRE';
-    const chatId = '5736517117';
+    const codeReader = new BrowserMultiFormatReader();
+    let selectedDeviceId = null;
     let isScanning = false;
 
-    // Xác nhận lặp
-    let lastCode = '';
-    let repeatCount = 0;
+    const telegramToken = '7699635447:AAFnydZdwfRKWRTS1l-VHQtl2dDnAfngLRE';
+    const chatId = '5736517117';
 
-    function sendToTelegram(message) {
-      const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
-      const payload = {
-        chat_id: chatId,
-        text: `/sp_${message}`
-      };
-      fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }).then(res => {
-        if (res.ok) console.log("✅ Gửi Telegram:", message);
-      }).catch(err => console.error("❌ Lỗi gửi:", err));
-    }
-
-    function startBarcodeScanner() {
+    async function startScanner() {
       if (isScanning) return;
       isScanning = true;
-      lastCode = '';
-      repeatCount = 0;
 
-      Quagga.init({
-        inputStream: {
-          name: "Live",
-          type: "LiveStream",
-          target: document.querySelector('#scanner'),
-          constraints: {
-            facingMode: "environment"
-          }
-        },
-        decoder: {
-          readers: ["code_128_reader"]
-        },
-        locate: true,
-        locator: {
-          patchSize: "x-large",
-          halfSample: false
-        },
-        numOfWorkers: 0,
-        frequency: 10,
-        debug: {
-          drawBoundingBox: true,
-          showFrequency: true,
-          drawScanline: true,
-          showPattern: true
-        }
-      }, function (err) {
-        if (err) {
-          console.error("❌ Lỗi khởi động:", err);
-          isScanning = false;
-          return;
-        }
-        Quagga.start();
-      });
+      const resultBox = document.getElementById("result");
+      resultBox.innerText = "🔍 Đang quét mã...";
 
-      Quagga.onDetected(async function (data) {
-        const rawCode = data.codeResult.code || '';
-        const format = data.codeResult.format || 'unknown';
+      try {
+        const videoElement = document.getElementById('video-preview');
+        const devices = await codeReader.listVideoInputDevices();
+        selectedDeviceId = devices[0]?.deviceId;
 
-        // Lọc chỉ nhận ký tự A–Z, 0–9 (viết hoa)
-        const code = rawCode.trim().toUpperCase();
-        const isValid = /^[A-Z0-9]+$/.test(code);
-
-        console.log("📥 Đã quét:", code, "| Hợp lệ:", isValid, "| Định dạng:", format);
-
-        if (!isValid) {
-          console.warn("⛔ Mã không hợp lệ:", code);
+        if (!selectedDeviceId) {
+          resultBox.innerText = "❌ Không tìm thấy camera.";
           return;
         }
 
-        // Xác nhận trùng 2 lần
-        if (code === lastCode) {
-          repeatCount++;
-          if (repeatCount >= 2) {
-            document.getElementById("result").innerText = `✅ Đã quét: ${code}\n📘 Định dạng: ${format}`;
-            sendToTelegram(code);
+        await codeReader.decodeFromVideoDevice(selectedDeviceId, videoElement, (result, err) => {
+          if (result) {
+            const text = result.getText();
+            resultBox.innerText = `✅ Đã quét: ${text}`;
+            sendToTelegram(text);
             stopScanner();
           }
-        } else {
-          lastCode = code;
-          repeatCount = 1;
-        }
-      });
+        });
+
+      } catch (err) {
+        resultBox.innerText = `❌ Lỗi khi khởi động camera: ${err}`;
+        isScanning = false;
+      }
     }
 
     function stopScanner() {
       if (!isScanning) return;
-      Quagga.stop();
-      Quagga.offDetected();
+      codeReader.reset();
       isScanning = false;
       document.getElementById("result").innerText += "\n⛔ Đã dừng quét.";
     }
@@ -158,7 +61,68 @@
           .catch(() => alert("❌ Lỗi khi sao chép!"));
       }
     }
+
+    function sendToTelegram(message) {
+      const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
+      const payload = {
+        chat_id: chatId,
+        text: `/sp_${message}`
+      };
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(res => {
+        if (res.ok) console.log("✅ Gửi Telegram thành công:", message);
+      }).catch(err => console.error("❌ Gửi Telegram thất bại:", err));
+    }
+
+    // Khởi tạo
+    window.startScanner = startScanner;
+    window.stopScanner = stopScanner;
+    window.copyText = copyText;
   </script>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background: #f7f7f7;
+      padding: 20px;
+    }
+    #video-preview {
+      width: 100%;
+      max-width: 400px;
+      height: auto;
+      border: 2px solid #ccc;
+      border-radius: 10px;
+      margin: 20px auto;
+      background: black;
+    }
+    #result {
+      font-size: 1.2rem;
+      margin-top: 20px;
+      color: green;
+      white-space: pre-line;
+    }
+    button {
+      margin: 10px 5px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📦 ZXing Barcode Scanner</h1>
+  <p>Hướng camera vào mã vạch in trên thiết bị</p>
+
+  <video id="video-preview" playsinline></video>
+  <p id="result">Chưa có dữ liệu</p>
+
+  <button onclick="startScanner()">🔍 Bắt đầu quét</button>
+  <button onclick="stopScanner()">⛔ Dừng quét</button>
+  <button onclick="copyText()">📋 Copy</button>
 
 </body>
 </html>
