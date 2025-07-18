@@ -50,7 +50,7 @@
 <body>
 
   <h1>📷 Quét mã & Gửi tới Telegram</h1>
-  <p>Chọn loại mã bạn muốn quét 1:</p>
+  <p>Chọn loại mã bạn muốn quét 2:</p>
 
   <div id="reader">
     <div id="overlay-guide"></div>
@@ -92,8 +92,8 @@
         overlay.style.width = "250px";
         overlay.style.height = "250px";
       } else {
-        overlay.style.width = "400px";
-        overlay.style.height = "120px";
+        overlay.style.width = "250px";
+        overlay.style.height = "80px";
       }
     }
 
@@ -154,7 +154,7 @@
         html5QrCode = null;
         isScanning = false;
 
-        document.getElementById("result").innerText += "\n⛔ Đã dừng quét.";
+        document.getElementById("result").innerText = "\n⛔ Đã dừng quét.";
       } catch (err) {
         console.error("❌ Lỗi khi dừng hoặc clear:", err);
         html5QrCode = null;
