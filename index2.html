@@ -8,7 +8,6 @@
     import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.0.10/+esm';
 
     const codeReader = new BrowserMultiFormatReader();
-    let selectedDeviceId = null;
     let isScanning = false;
 
     const telegramToken = '7699635447:AAFnydZdwfRKWRTS1l-VHQtl2dDnAfngLRE';
@@ -19,29 +18,28 @@
       isScanning = true;
 
       const resultBox = document.getElementById("result");
-      resultBox.innerText = "🔍 Đang quét mã...";
+      const videoElement = document.getElementById("video-preview");
+      resultBox.innerText = "🔍 Đang mở camera...";
 
       try {
-        const videoElement = document.getElementById('video-preview');
-        const devices = await codeReader.listVideoInputDevices();
-        selectedDeviceId = devices[0]?.deviceId;
-
-        if (!selectedDeviceId) {
-          resultBox.innerText = "❌ Không tìm thấy camera.";
-          return;
-        }
-
-        await codeReader.decodeFromVideoDevice(selectedDeviceId, videoElement, (result, err) => {
-          if (result) {
-            const text = result.getText();
-            resultBox.innerText = `✅ Đã quét: ${text}`;
-            sendToTelegram(text);
-            stopScanner();
+        // Truy cập camera mặc định (camera sau nếu có)
+        await codeReader.decodeFromConstraints(
+          {
+            video: { facingMode: "environment" }
+          },
+          videoElement,
+          (result, err) => {
+            if (result) {
+              const text = result.getText();
+              resultBox.innerText = `✅ Đã quét: ${text}`;
+              sendToTelegram(text);
+              stopScanner();
+            }
           }
-        });
-
+        );
       } catch (err) {
-        resultBox.innerText = `❌ Lỗi khi khởi động camera: ${err}`;
+        console.error("❌ Lỗi camera:", err);
+        resultBox.innerText = `❌ Không thể truy cập camera: ${err}`;
         isScanning = false;
       }
     }
@@ -58,7 +56,7 @@
       if (text) {
         navigator.clipboard.writeText(text)
           .then(() => alert("📋 Đã sao chép!"))
-          .catch(() => alert("❌ Lỗi khi sao chép!"));
+          .catch(() => alert("❌ Lỗi sao chép!"));
       }
     }
 
@@ -73,15 +71,16 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).then(res => {
-        if (res.ok) console.log("✅ Gửi Telegram thành công:", message);
-      }).catch(err => console.error("❌ Gửi Telegram thất bại:", err));
+        if (res.ok) console.log("✅ Đã gửi Telegram:", message);
+      }).catch(err => console.error("❌ Lỗi gửi Telegram:", err));
     }
 
-    // Khởi tạo
+    // Expose functions to HTML
     window.startScanner = startScanner;
     window.stopScanner = stopScanner;
     window.copyText = copyText;
   </script>
+
   <style>
     body {
       font-family: sans-serif;
@@ -115,7 +114,7 @@
 <body>
 
   <h1>📦 ZXing Barcode Scanner</h1>
-  <p>Hướng camera vào mã vạch in trên thiết bị</p>
+  <p>Hướng camera vào mã vạch in trên thiết bị 2</p>
 
   <video id="video-preview" playsinline></video>
   <p id="result">Chưa có dữ liệu</p>
