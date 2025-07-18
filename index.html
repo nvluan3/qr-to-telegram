@@ -76,7 +76,7 @@
         chat_id: chatId,
         text: `/sp_${message}`
       };
-      fetch(url, {
+      return fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -109,17 +109,17 @@
       html5QrCode.start(
         { facingMode: "environment" },
         {
-          fps: 5,
+          fps: 10,
           qrbox: qrbox,
           aspectRatio: 1.7778,
           formatsToSupport: formatList
         },
-        qrMessage => {
+        async qrMessage => {
           document.getElementById("result").innerText = `✅ Đã quét: ${qrMessage}`;
-          sendToTelegram(qrMessage);
-          stopScanner();
+          await sendToTelegram(qrMessage);
+          await stopScanner();
         },
-        errorMessage => {}
+        errorMessage => { /* có thể log nhẹ nếu cần */ }
       ).catch(err => {
         console.error("Không thể khởi động camera:", err);
         isScanning = false;
@@ -131,19 +131,24 @@
     }
 
     function startBarcodeScanner() {
-      startScanner([Html5QrcodeSupportedFormats.CODE_128], "barcode");
+      startScanner([
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.CODE_39
+      ], "barcode");
     }
 
-    function stopScanner() {
+    async function stopScanner() {
       if (!isScanning) return;
-      html5QrCode.stop().then(() => {
+      try {
+        await html5QrCode.stop();
         isScanning = false;
         document.getElementById("result").innerText += "\n⛔ Đã dừng quét.";
         document.getElementById("overlay-guide").style.width = "0";
         document.getElementById("overlay-guide").style.height = "0";
-      }).catch(err => {
+      } catch (err) {
         console.error("Lỗi khi dừng camera:", err);
-      });
+      }
     }
 
     function copyText() {
