@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.png" type="image/png">
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js')
+      .then(function(reg) {
+        console.log("✅ Service Worker đã đăng ký:", reg);
+      })
+      .catch(function(err) {
+        console.error("❌ Service Worker lỗi:", err);
+      });
+  }
+</script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quét QR & Gửi Telegram</title>
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.png" type="image/png">
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+      background: #f7f7f7;
+    }
+    #reader {
+      width: 300px;
+      margin: 20px auto;
+      border: 2px solid #ccc;
+      border-radius: 10px;
+      background: white;
+    }
+    #result {
+      font-size: 1.2rem;
+      margin-top: 20px;
+      color: green;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📷 Quét mã QR & Gửi tới Telegram Bot</h1>
+  <p>Hướng camera vào mã QR chứa số seri sản phẩm</p>
+  <div id="reader"></div>
+  <p id="result"></p>
+
+  <button onclick="stopScanner()">Dừng quét</button>
+
+  <script>
+    // ⚠️ THAY THẾ bằng token bot và chat_id của bạn
+    const telegramToken = 'YOUR_TELEGRAM_BOT_TOKEN';
+    const chatId = 'YOUR_CHAT_ID'; // ví dụ: 123456789 hoặc -100123456789 (group)
+
+    function sendToTelegram(message) {
+      const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
+      const payload = {
+        chat_id: chatId,
+        text: `📦 Số seri đã quét: ${message}`
+      };
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(res => {
+        if (res.ok) {
+          console.log("Đã gửi đến Telegram.");
+        }
+      }).catch(err => console.error("Lỗi khi gửi:", err));
+    }
+
+    // Khởi động trình quét QR
+    const html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+      { facingMode: "environment" }, // camera sau
+      { fps: 10, qrbox: 250 },
+      qrMessage => {
+        document.getElementById("result").innerText = `✅ Đã quét: ${qrMessage}`;
+        sendToTelegram(qrMessage);
+        html5QrCode.stop(); // Dừng ngay sau lần quét đầu tiên
+      },
+      errorMessage => {
+        // Không cần xử lý lỗi nhỏ trong quá trình quét
+      }
+    );
+
+    function stopScanner() {
+      html5QrCode.stop().then(() => {
+        document.getElementById("result").innerText += "\nĐã dừng quét.";
+      }).catch(err => {
+        console.error("Lỗi khi dừng camera:", err);
+      });
+    }
+  </script>
+
+</body>
+</html>
