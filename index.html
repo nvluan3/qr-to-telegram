@@ -2,20 +2,23 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Quét mã QR/Barcode & Gửi Telegram</title>
   <meta name="theme-color" content="#ffffff" />
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.png" type="image/png">
   <script>
+    // KHÔNG đăng ký service worker để tránh cache
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js')
-        .then(function (reg) {
-          console.log("✅ Service Worker đã đăng ký:", reg);
-        })
-        .catch(function (err) {
-          console.error("❌ Service Worker lỗi:", err);
-        });
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister();
+        }
+        console.log("🧹 Đã hủy tất cả service worker để tránh cache.");
+      });
     }
   </script>
   <style>
@@ -63,14 +66,14 @@
     const chatId = '5736517117';
 
     function sendToTelegram(message) {
-      const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
+      const url = `https://api.telegram.org/bot${telegramToken}/sendMessage?nocache=${Date.now()}`;
       const payload = {
         chat_id: chatId,
         text: `/sp_${message}`
       };
       fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
         body: JSON.stringify(payload)
       }).then(res => {
         if (res.ok) {
