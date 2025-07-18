@@ -3,41 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <title>Quét QR & Barcode</title>
-  <script type="module">
-    import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.1/+esm';
-
-    const codeReader = new BrowserMultiFormatReader();
-    const videoElement = document.getElementById('video');
-    const resultEl = document.getElementById('result');
-    let controls = null;
-
-    async function requestCameraAndScan() {
-      try {
-        // Yêu cầu quyền camera
-        await navigator.mediaDevices.getUserMedia({ video: true });
-
-        // Lấy camera
-        const devices = await codeReader.listVideoInputDevices();
-        const deviceId = devices[0]?.deviceId;
-        if (!deviceId) {
-          alert("Không tìm thấy camera.");
-          return;
-        }
-
-        // Bắt đầu quét
-        controls = await codeReader.decodeFromVideoDevice(deviceId, videoElement, (result, err) => {
-          if (result) {
-            resultEl.innerText = `✅ Đã quét: ${result.getText()}`;
-            sendToTelegram(result.getText());
-            controls.stop();
-          }
-        });
-
-      } catch (err) {
-        alert("❌ Không thể truy cập camera: " + err.message);
-        console.error(err);
-      }
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    video, #reader {
+      width: 300px;
+      margin: 20px auto;
+      border: 2px solid #ccc;
+      border-radius: 10px;
+      display: block;
     }
+    body { text-align: center; background: #f8f8f8; padding: 20px; }
+    button { padding: 10px; margin: 5px; }
+    #result { color: green; font-size: 1.2em; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>📷 Quét QR & Barcode (Code 128)</h1>
+  <div id="reader"></div>
+  <p id="result"></p>
+  <button onclick="startScan()">🔄 Quét lại</button>
+  <button onclick="copyResult()">📋 Copy</button>
+
+  <script>
+    const html5QrCode = new Html5Qrcode("reader");
+    const resultEl = document.getElementById("result");
 
     function sendToTelegram(message) {
       const telegramToken = '7699635447:AAFnydZdwfRKWRTS1l-VHQtl2dDnAfngLRE';
@@ -46,31 +35,42 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat_id: chatId, text: `/sp_${message}` })
-      }).then(res => {
-        if (res.ok) console.log("Đã gửi Telegram");
       });
     }
 
-    window.rescan = () => {
+    function startScan() {
       resultEl.innerText = "";
-      if (controls) controls.stop();
-      requestCameraAndScan();
-    };
+      html5QrCode.stop().catch(() => {}).then(() => {
+        html5QrCode.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: 250,
+            formatsToSupport: [
+              Html5QrcodeSupportedFormats.QR_CODE,
+              Html5QrcodeSupportedFormats.CODE_128
+            ]
+          },
+          qrMessage => {
+            resultEl.innerText = `✅ Đã quét: ${qrMessage}`;
+            sendToTelegram(qrMessage);
+            html5QrCode.stop();
+          },
+          errorMessage => {
+            // console.warn(errorMessage);
+          }
+        );
+      });
+    }
 
-    window.copyResult = () => {
-      const text = resultEl.innerText;
-      if (text) navigator.clipboard.writeText(text).then(() => alert("📋 Đã sao chép"));
-    };
+    function copyResult() {
+      navigator.clipboard.writeText(resultEl.innerText).then(() => {
+        alert("📋 Đã sao chép");
+      });
+    }
 
-    // Tự động khởi động khi trang tải
-    window.onload = requestCameraAndScan;
+    // Auto start
+    window.onload = startScan;
   </script>
-</head>
-<body>
-  <h1>📷 Quét QR & Barcode (Code 128)</h1>
-  <video id="video" width="300" height="200" autoplay playsinline style="border:1px solid #ccc;"></video>
-  <p id="result"></p>
-  <button onclick="rescan()">🔄 Quét lại</button>
-  <button onclick="copyResult()">📋 Copy</button>
 </body>
 </html>
