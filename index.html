@@ -1,26 +1,28 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.png" type="image/png">
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js')
+      .then(function(reg) {
+        console.log("✅ Service Worker đã đăng ký:", reg);
+      })
+      .catch(function(err) {
+        console.error("❌ Service Worker lỗi:", err);
+      });
+  }
+</script>
+
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Quét mã QR/Barcode & Gửi Telegram</title>
+  <title>Quét QR & Gửi Telegram</title>
   <meta name="theme-color" content="#ffffff" />
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.png" type="image/png">
-  <script>
-    // KHÔNG đăng ký service worker để tránh cache
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for(let registration of registrations) {
-          registration.unregister();
-        }
-        console.log("🧹 Đã hủy tất cả service worker để tránh cache.");
-      });
-    }
-  </script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body {
       font-family: sans-serif;
@@ -28,7 +30,7 @@
       padding: 20px;
       background: #f7f7f7;
     }
-    video {
+    #reader {
       width: 300px;
       margin: 20px auto;
       border: 2px solid #ccc;
@@ -49,84 +51,59 @@
   </style>
 </head>
 <body>
-  <h1>📦 Quét mã QR/Barcode & Gửi tới Telegram</h1>
-  <p>Hướng camera vào mã QR hoặc mã vạch sản phẩm</p>
-  <video id="reader" playsinline autoplay muted></video>
-  <p id="result">Đang khởi động camera...</p>
+
+  <h1>📷 Quét mã QR & Gửi tới Telegram Bot</h1>
+  <p>Hướng camera vào mã QR chứa số seri sản phẩm</p>
+  <div id="reader"></div>
+  <p id="result"></p>
+
   <button onclick="stopScanner()">Dừng quét</button>
 
-  <script type="module">
-    import {
-      BrowserMultiFormatReader,
-      BarcodeFormat,
-      DecodeHintType
-    } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
-
+  <script>
+    // ⚠️ THAY THẾ bằng token bot và chat_id của bạn
     const telegramToken = '7699635447:AAFnydZdwfRKWRTS1l-VHQtl2dDnAfngLRE';
-    const chatId = '5736517117';
+    const chatId = '5736517117'; // ví dụ: 123456789 hoặc -100123456789 (group)
 
     function sendToTelegram(message) {
-      const url = `https://api.telegram.org/bot${telegramToken}/sendMessage?nocache=${Date.now()}`;
+      const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
       const payload = {
         chat_id: chatId,
         text: `/sp_${message}`
       };
       fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).then(res => {
         if (res.ok) {
-          console.log("✅ Đã gửi tới Telegram.");
+          console.log("Đã gửi đến Telegram.");
         }
-      }).catch(err => console.error("❌ Gửi lỗi:", err));
+      }).catch(err => console.error("Lỗi khi gửi:", err));
     }
 
-    const hints = new Map();
-    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-      BarcodeFormat.CODE_128,
-      BarcodeFormat.EAN_13,
-      BarcodeFormat.EAN_8,
-      BarcodeFormat.UPC_A,
-      BarcodeFormat.UPC_E,
-      BarcodeFormat.CODE_39,
-      BarcodeFormat.QR_CODE
-    ]);
-
-    const codeReader = new BrowserMultiFormatReader(hints);
-    let controls;
-
-    async function startScanner() {
-      try {
-        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
-        const selectedDeviceId = devices[0]?.deviceId;
-        if (!selectedDeviceId) {
-          document.getElementById("result").innerText = "❌ Không tìm thấy thiết bị camera.";
-          return;
-        }
-
-        controls = await codeReader.decodeFromVideoDevice(selectedDeviceId, document.getElementById("reader"), (result, err, ctrl) => {
-          if (result) {
-            const content = result.getText();
-            document.getElementById("result").innerText = "✅ Đã quét: " + content;
-            sendToTelegram(content);
-            ctrl.stop();
-          }
-        });
-      } catch (error) {
-        document.getElementById("result").innerText = "❌ Lỗi mở camera: " + error;
-        console.error("Camera error:", error);
+    // Khởi động trình quét QR
+    const html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+      { facingMode: "environment" }, // camera sau
+      { fps: 10, qrbox: 250 },
+      qrMessage => {
+        document.getElementById("result").innerText = `✅ Đã quét: ${qrMessage}`;
+        sendToTelegram(qrMessage);
+        html5QrCode.stop(); // Dừng ngay sau lần quét đầu tiên
+      },
+      errorMessage => {
+        // Không cần xử lý lỗi nhỏ trong quá trình quét
       }
+    );
+
+    function stopScanner() {
+      html5QrCode.stop().then(() => {
+        document.getElementById("result").innerText += "\nĐã dừng quét.";
+      }).catch(err => {
+        console.error("Lỗi khi dừng camera:", err);
+      });
     }
-
-    window.stopScanner = function () {
-      if (controls) {
-        controls.stop();
-        document.getElementById("result").innerText = "⛔ Đã dừng quét.";
-      }
-    };
-
-    startScanner();
   </script>
+
 </body>
 </html>
