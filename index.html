@@ -48,9 +48,10 @@
 <body>
   <h1>📦 Quét mã QR/Barcode & Gửi tới Telegram</h1>
   <p>Hướng camera vào mã QR hoặc mã vạch sản phẩm</p>
-  <video id="reader" playsinline></video>
-  <p id="result">Đang quét...</p>
+  <video id="reader" playsinline autoplay muted></video>
+  <p id="result">Đang khởi động camera...</p>
   <button onclick="stopScanner()">Dừng quét</button>
+
   <script type="module">
     import {
       BrowserMultiFormatReader,
@@ -59,7 +60,7 @@
     } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
 
     const telegramToken = '7699635447:AAFnydZdwfRKWRTS1l-VHQtl2dDnAfngLRE';
-    const chatId = '5736517117'; // ví dụ: 123456789 hoặc -100123456789 (group)
+    const chatId = '5736517117';
 
     function sendToTelegram(message) {
       const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
@@ -92,17 +93,28 @@
     const codeReader = new BrowserMultiFormatReader(hints);
     let controls;
 
-    codeReader.decodeFromVideoDevice(null, document.getElementById("reader"), (result, err, ctrl) => {
-      if (result) {
-        const content = result.getText();
-        document.getElementById("result").innerText = "✅ Đã quét: " + content;
-        sendToTelegram(content);
-        controls = ctrl;
-        ctrl.stop();
+    async function startScanner() {
+      try {
+        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+        const selectedDeviceId = devices[0]?.deviceId;
+        if (!selectedDeviceId) {
+          document.getElementById("result").innerText = "❌ Không tìm thấy thiết bị camera.";
+          return;
+        }
+
+        controls = await codeReader.decodeFromVideoDevice(selectedDeviceId, document.getElementById("reader"), (result, err, ctrl) => {
+          if (result) {
+            const content = result.getText();
+            document.getElementById("result").innerText = "✅ Đã quét: " + content;
+            sendToTelegram(content);
+            ctrl.stop();
+          }
+        });
+      } catch (error) {
+        document.getElementById("result").innerText = "❌ Lỗi mở camera: " + error;
+        console.error("Camera error:", error);
       }
-    }).catch(err => {
-      document.getElementById("result").innerText = "❌ Không thể mở camera: " + err;
-    });
+    }
 
     window.stopScanner = function () {
       if (controls) {
@@ -110,6 +122,8 @@
         document.getElementById("result").innerText = "⛔ Đã dừng quét.";
       }
     };
+
+    startScanner();
   </script>
 </body>
 </html>
