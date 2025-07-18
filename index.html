@@ -102,14 +102,14 @@
 
       const qrbox = (type === "qr")
         ? { width: 250, height: 250 }
-        : { width: 350, height: 100 };
+        : { width: 400, height: 120 };
 
       updateOverlay(type);
 
       html5QrCode.start(
         { facingMode: "environment" },
         {
-          fps: 10,
+          fps: 5,
           qrbox: qrbox,
           aspectRatio: 1.7778,
           formatsToSupport: formatList
