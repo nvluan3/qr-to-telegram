@@ -1,20 +1,21 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Quét mã QR/Barcode & Gửi Telegram</title>
   <meta name="theme-color" content="#ffffff" />
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.png" type="image/png">
 
+  <!-- Đăng ký Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js')
-        .then(function(reg) {
+        .then(function (reg) {
           console.log("✅ Service Worker đã đăng ký:", reg);
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.error("❌ Service Worker lỗi:", err);
         });
     }
@@ -27,6 +28,7 @@
       padding: 20px;
       background: #f7f7f7;
     }
+
     video {
       width: 300px;
       margin: 20px auto;
@@ -34,11 +36,13 @@
       border-radius: 10px;
       background: white;
     }
+
     #result {
       font-size: 1.2rem;
       margin-top: 20px;
       color: green;
     }
+
     button {
       padding: 10px 20px;
       font-size: 1rem;
@@ -47,6 +51,7 @@
     }
   </style>
 </head>
+
 <body>
 
   <h1>📦 Quét mã QR/Barcode & Gửi tới Telegram</h1>
@@ -57,12 +62,17 @@
 
   <button onclick="stopScanner()">Dừng quét</button>
 
-  <!-- ZXing thư viện đọc QR và barcode -->
+  <!-- Thư viện ZXing hỗ trợ nhiều định dạng mã -->
   <script type="module">
-    import { BrowserMultiFormatReader } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
+    import {
+      BrowserMultiFormatReader,
+      BarcodeFormat,
+      DecodeHintType
+    } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
 
+    // ✅ Thay thông tin bot thật
     const telegramToken = '7699635447:AAFnydZdwfRKWRTS1l-VHQtl2dDnAfngLRE';
-    const chatId = '5736517117'; // Chat ID người nhận
+    const chatId = '5736517117';
 
     function sendToTelegram(message) {
       const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
@@ -78,10 +88,22 @@
         if (res.ok) {
           console.log("✅ Đã gửi tới Telegram.");
         }
-      }).catch(err => console.error("❌ Lỗi khi gửi:", err));
+      }).catch(err => console.error("❌ Gửi lỗi:", err));
     }
 
-    const codeReader = new BrowserMultiFormatReader();
+    // ⚙️ Cấu hình định dạng ưu tiên barcode + QR
+    const hints = new Map();
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+      BarcodeFormat.CODE_128,
+      BarcodeFormat.EAN_13,
+      BarcodeFormat.EAN_8,
+      BarcodeFormat.UPC_A,
+      BarcodeFormat.UPC_E,
+      BarcodeFormat.CODE_39,
+      BarcodeFormat.QR_CODE
+    ]);
+
+    const codeReader = new BrowserMultiFormatReader(hints);
     let controls;
 
     codeReader.decodeFromVideoDevice(null, document.getElementById("reader"), (result, err, ctrl) => {
@@ -90,10 +112,10 @@
         document.getElementById("result").innerText = "✅ Đã quét: " + content;
         sendToTelegram(content);
         controls = ctrl;
-        ctrl.stop(); // Dừng sau khi quét xong
+        ctrl.stop(); // Dừng sau lần quét đầu tiên
       }
     }).catch(err => {
-      document.getElementById("result").innerText = "❌ Không thể khởi động camera: " + err;
+      document.getElementById("result").innerText = "❌ Không thể mở camera: " + err;
     });
 
     window.stopScanner = function () {
@@ -101,8 +123,7 @@
         controls.stop();
         document.getElementById("result").innerText = "⛔ Đã dừng quét.";
       }
-    }
+    };
   </script>
-
 </body>
 </html>
